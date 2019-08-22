@@ -30,6 +30,10 @@ public class TimeEntry {
         this.hours = timeEntry.hours;
     }
 
+    public void setId(long id) {
+        this.id = id;
+    }
+
     public TimeEntry() { }
 
     public long getId() {
