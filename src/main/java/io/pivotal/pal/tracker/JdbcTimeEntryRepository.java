@@ -23,11 +23,11 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository{
     @Override
     public TimeEntry create(TimeEntry timeEntry) {
         String query = "INSERT INTO time_entries (project_id, user_id, date, hours) VALUES (?, ?, ?, ?)";
-        timeEntry.setId(executeUpdate (query, timeEntry));
+        timeEntry.setId(executeInsert (query, timeEntry));
         return timeEntry;
     }
 
-    private long executeUpdate(String query, TimeEntry timeEntry) {
+    private long executeInsert(String query, TimeEntry timeEntry) {
         GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
@@ -40,6 +40,7 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository{
         }, keyHolder);
         return keyHolder.getKey().longValue();
     }
+
 
         @Override
     public TimeEntry find(long timeEntryId) {
@@ -69,22 +70,49 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository{
 
         String query = "Select id, project_id, user_id, date, hours from time_entries";
 
-           // List<Map<String, Object>> foundEntries = jdbcTemplate.queryForList(query);
-            //timeEntries = jdbcTemplate.queryForList(query, TimeEntry.class);
-
-        return jdbcTemplate.queryForList(query, TimeEntry.class);
+        return jdbcTemplate.query(
+                query,
+                (rs, rowNum) ->
+                        new TimeEntry(
+                                rs.getLong("id"),
+                                rs.getLong("project_id"),
+                                rs.getLong("user_id"),
+                                (rs.getDate("date")).toLocalDate(),
+                                rs.getInt("hours")
+                        )
+        );
     }
 
     @Override
     public TimeEntry update(long timeEntryId, TimeEntry newTimeEntry) {
-        String query = "update time_entey where id = '?'";
+        String query = "update time_entries set project_id = ?, user_id = ?, date = ?, hours = ? where id = " + timeEntryId;
 
-        return null;
+        executeUpdate(query, newTimeEntry);
+
+        newTimeEntry.setId(timeEntryId);
+        return newTimeEntry;
     }
+
+    private void executeUpdate(String query, TimeEntry timeEntry) {
+
+        jdbcTemplate.update(con -> {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setLong(1, timeEntry.getProjectId());
+            ps.setLong(2, timeEntry.getUserId());
+            ps.setDate(3, java.sql.Date.valueOf(timeEntry.getDate()));
+            ps.setInt(4, timeEntry.getHours());
+
+            return ps;
+        });
+    }
+
 
     @Override
     public void delete(long timeEntryId) {
 
+        String query = "delete from time_entries where id = " + timeEntryId;
+
+        int rows = jdbcTemplate.update(query);
 
     }
 }
